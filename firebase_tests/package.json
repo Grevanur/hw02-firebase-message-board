@@ -1,0 +1,18 @@
+{
+  "name": "vault-board-rules-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/firestore.rules.test.js",
+    "seed:v1": "node tools/seed_v1.js",
+    "migrate:v2": "node tools/migrate_v1_to_v2.js"
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.4.0",
+    "firebase-admin": "^14.5.1"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.7"
+  }
+}

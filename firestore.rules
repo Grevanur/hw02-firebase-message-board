@@ -1,0 +1,82 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsMessage() {
+      return signedIn() && resource.data.authorUid == request.auth.uid;
+    }
+
+    function validMessageKeys() {
+      return request.resource.data.keys().hasOnly([
+        'text',
+        'authorUid',
+        'authorName',
+        'createdAt',
+        'editedAt',
+        'schemaVersion',
+        'clientRequestId'
+      ]);
+    }
+
+    function validMessageText() {
+      return request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 500;
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'firstName',
+          'lastName',
+          'role',
+          'registrationDateTime'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() > 0
+        && request.resource.data.lastName is string
+        && request.resource.data.lastName.size() > 0
+        && request.resource.data.role in ['student', 'graduateStudent']
+        && request.resource.data.registrationDateTime == request.time;
+      allow update, delete: if false;
+    }
+
+    match /messages/{messageId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && validMessageKeys()
+        && validMessageText()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() > 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.editedAt == null
+        && request.resource.data.schemaVersion == 2
+        && request.resource.data.clientRequestId is string
+        && request.resource.data.clientRequestId.size() > 0;
+      allow update: if ownsMessage()
+        && validMessageKeys()
+        && validMessageText()
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.authorName == resource.data.authorName
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.clientRequestId == resource.data.clientRequestId
+        && request.resource.data.schemaVersion == 2
+        && request.resource.data.editedAt == request.time;
+      allow delete: if ownsMessage();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
